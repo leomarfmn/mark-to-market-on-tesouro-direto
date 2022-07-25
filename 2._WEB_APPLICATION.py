@@ -77,6 +77,7 @@ elif (page == "Teoria"):
 
 else: 
     st.title('Simulação')
+    st.subheader('Título escolhido:')
 
     with st.sidebar:
         titulo = st.selectbox('Selecione o título',(df['TÍTULO']))
@@ -105,11 +106,6 @@ else:
     if (data_resgate > format_date(data_vencimento)):
         st.error("Escolha uma data menor que a data de vencimento do título.")
     else:
-        st.write('Valor investido R$ {:.2f}'.format(valor_investido))
-        st.write("Data selecionada: " + data_resgate.strftime('%d-%b-%Y'))
-        st.write("Taxa SELIC escolhida: " + str(selic) + '%')
-        st.write("Taxa IPCA escolhida: " + str(ipca) + '%')
-        st.write("Taxa prefixada escolhida: " + str(taxa_resgate) + '%')
 
         today = datetime.date.today()
         periodo = pd.date_range(today, data_resgate, freq='D').strftime("%Y-%m-%d").tolist()
@@ -134,23 +130,39 @@ else:
             vna_inicial = valor_titulo / percentual_do_vna_inicial
             rendimentos['Tesouro direto (teórico)'] = rendimentos['Intervalo de tempo'].apply(lambda x: valor_investido * (((ipca / 100 + 1) * (taxa_contratada / 100 + 1)) ** x))
             rendimentos['Tesouro direto (real)'] = rendimentos['Intervalo de tempo'].apply(lambda x: numero_de_titulos * percentual_do_vna_final * vna_inicial * (1 + ipca / 100) ** x)
-            
-    
-
         rendimentos.drop(['Intervalo de tempo'], axis = 1 , inplace=True)
-        st.dataframe(rendimentos)
+
+        container1 = st.container()
+        col1, col2 = container1.columns([1, 3])
+        container2 = col2.container()
+        container3 = col2.container()
+        tab1, tab2 = container3.tabs(["📈 Gráfico", "🗃 Dados"])
+
         data_resgate = datetime.datetime.strftime(data_resgate, '%Y-%m-%d')
         df_barplot = rendimentos[rendimentos['Data'] == data_resgate][['Poupança', 'Selic', 'Inflação (IPCA)', 'Tesouro direto (teórico)', 'Tesouro direto (real)']].astype(str).T.reset_index()
         df_barplot.columns = ['Comparação','valor']
         df_barplot['valor'] = df_barplot['valor'].apply(lambda x: ((float(x) / valor_investido) - 1 ) * 100)
         df_barplot['valor_str'] = df_barplot['valor'].map('{:,.2f}%'.format)
-        st.write(df_barplot)
+
+        with col1:
+            st.write('  \n‏')
+            st.subheader('Dados da simulação:')
+            st.write(
+                """
+                -   Valor investido R$: {:.2f}
+                -   Data selecionada: {}
+                -   Taxa SELIC escolhida: {}%
+                -   Taxa IPCA escolhida: {}%
+                -   Taxa prefixada escolhida: {}%
+                """.format(valor_investido, data_resgate, str(selic), str(ipca), str(taxa_resgate)))
+
 
         fig = px.bar(df_barplot, x='Comparação', y = 'valor', text = 'valor_str')
-        st.plotly_chart(fig, use_container_width=True)
-
+        tab1.plotly_chart(fig, use_container_width=True)
+        tab2.write(df_barplot)
+        
         fig = px.line(rendimentos, x='Data', y=['Poupança', 'Selic', 'Inflação (IPCA)', 'Tesouro direto (teórico)', 'Tesouro direto (real)'])
-        st.plotly_chart(fig, use_container_width=True)
+        container2.plotly_chart(fig, use_container_width=True)
 
         
     
