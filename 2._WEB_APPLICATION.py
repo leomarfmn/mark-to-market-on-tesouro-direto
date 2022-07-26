@@ -42,7 +42,6 @@ def date_diff(a, b):
 
 TR = 0.00048
 df = get_data()
-#df = df[~df['TÍTULO'].str.contains('juros')]
 
 # Sidebar
 with st.sidebar:
@@ -53,27 +52,28 @@ with st.sidebar:
 
 if (page == "Home"):
     st.title('Marcação a mercado no Tesouro Direto')
-    st.subheader('Títulos disponíveis para simulação*')
+    st.subheader('Títulos disponíveis* para simulação**')
     st.write('Escolha uma opção ao lado (Teoria ou Simulações) para mais informações.')
-    fig = go.Figure(data=[go.Table(
-    header=dict(values=list(df.columns),line_color='darkslategray',
-    fill_color='royalblue',
-    align='center',
-    height = 45),
-    cells=dict(values=[df['TÍTULO'],df['TAXA'],df['VALOR MÍNIMO'],df['VALOR TÍTULO'],df['VENCIMENTO']],
-    line_color='darkslategray',
-    fill_color='green',
-    align='center',
-    height = 45))])
-    fig.update_layout(
-    height = 1500,
-    margin=dict(l=0, r=0, b=0, t=0))
-    st.plotly_chart(fig)
+    st.dataframe(df.set_index('TÍTULO'))
+    st.write('''<p1 style="font-size: small" style="text-align: left;">
+                *Foram listados acima apenas os títulos vendidos direto pelo portal do tesouro direto e com rendimento atrelado ao IPCA ou prefixados.</p1>''',unsafe_allow_html=True)
+    st.write('''<p1 style="font-size: small" style="text-align: left;">
+                **Não é recomendação de investimento. A ferramenta deve ser utilizada apenas para cálculos sem compromisso.</p1>''',unsafe_allow_html=True)
 
 elif (page == "Teoria"):
     st.title('O que é marcação a mercado?')
+    st.write('Ainda que os títulos públicos, "prometam" uma taxa de rentabilidade na hora da compra, essas taxas flutuam e, com elas, o valor dos investimentos. Marcação a mercado é a atualização dos valores de um investimento com base nas flutuações das taxas. Em outras palavras, é o valor de resgate do investimento, caso esse seja feito antes do seu vencimento.')
+    st.write('Essa variação, por si só, não é necessariamente algo positivo ou negativo. Depende do investidor entender como e porquê essas flutuações ocorrem e agir de acordo com o que faz mais sentido.')
+    st.write('É principalmente por isso que os títulos públicos, ainda que possibilitando o resgate diário, não são recomendados de forma uniforme ao público. Um resgate antecipado por necessidade por trazer grandes perdas ao investidor, bem como um resgate planejado pode assimilar ganhos extraordinários.')
     st.subheader('Aprenda mais nos vídeos abaixo:')
-    st.video('https://www.youtube.com/watch?v=BUnpkmVIwgo')
+    container1 = st.container()
+    col1, col2 = container1.columns(2)
+    with col1:
+        st.video('https://www.youtube.com/watch?v=BUnpkmVIwgo')
+        st.video('https://www.youtube.com/watch?v=WTKueE2P_Vk')
+    with col2:
+        st.video('https://www.youtube.com/watch?v=ll7EB32XM_g')
+        st.video('https://www.youtube.com/watch?v=wQqFypK4o4A')
 
 else: 
     st.title('Simulação')
@@ -96,8 +96,8 @@ else:
         st.info('Para mais informações sobre a taxa SELIC, visite: https://www.bcb.gov.br/controleinflacao/taxaselic')
         st.info('Para mais informações sobre o IPCA, visite: https://www.bcb.gov.br/controleinflacao/indicepreco')
 
-    
-    st.write(df[df['TÍTULO'] == titulo])
+    df_show = df[df['TÍTULO'] == titulo].set_index('TÍTULO')
+    st.dataframe(df_show)
     data_vencimento = df[df['TÍTULO'] == titulo]['VENCIMENTO'].tolist()[0]
     valor_titulo = float(df[df['TÍTULO'] == titulo]['VALOR TÍTULO'].tolist()[0].split(' ')[1].replace('.', '').replace(',','.'))
     numero_de_titulos = valor_investido / valor_titulo
@@ -114,7 +114,7 @@ else:
         
         rendimentos['Intervalo de tempo'] = rendimentos['Data'].apply(lambda x: len(pd.date_range(today, x, freq = 'D').tolist())/365)
         rendimentos['Poupança'] = rendimentos['Intervalo de tempo'].apply(lambda x: valor_investido * ((1.005 ** 12 + 0.00048) ** x) if selic >= 8.5    else valor_investido * ((selic * 0.7) / 100 + 1 + 0.00048) ** x)
-        rendimentos['Selic'] = rendimentos['Intervalo de tempo'].apply(lambda x: valor_investido * calculo_de_rendimento(selic, x))
+        rendimentos['SELIC'] = rendimentos['Intervalo de tempo'].apply(lambda x: valor_investido * calculo_de_rendimento(selic, x))
         rendimentos['Inflação (IPCA)'] = rendimentos['Intervalo de tempo'].apply(lambda x: valor_investido * calculo_de_rendimento(ipca, x))
         
         if ('PREFIXADO' in titulo):
@@ -139,31 +139,70 @@ else:
         tab1, tab2 = container3.tabs(["📈 Gráfico", "🗃 Dados"])
 
         data_resgate = datetime.datetime.strftime(data_resgate, '%Y-%m-%d')
-        df_barplot = rendimentos[rendimentos['Data'] == data_resgate][['Poupança', 'Selic', 'Inflação (IPCA)', 'Tesouro direto (teórico)', 'Tesouro direto (real)']].astype(str).T.reset_index()
+        df_barplot = rendimentos[rendimentos['Data'] == data_resgate][['Poupança', 'SELIC', 'Inflação (IPCA)', 'Tesouro direto (teórico)', 'Tesouro direto (real)']].astype(str).T.reset_index()
         df_barplot.columns = ['Comparação','valor']
         df_barplot['valor'] = df_barplot['valor'].apply(lambda x: ((float(x) / valor_investido) - 1 ) * 100)
         df_barplot['valor_str'] = df_barplot['valor'].map('{:,.2f}%'.format)
 
         with col1:
-            st.write('  \n‏')
-            st.subheader('Dados da simulação:')
+            data_resgate = data_resgate.split('-')[2] + '/' + data_resgate.split('-')[1] + '/' + data_resgate.split('-')[0]
+            st.markdown("<h3 style='text-align: center;'>""</h3>", unsafe_allow_html=True) #Empty line
+            st.markdown("<h3 style='text-align: center;'>""</h3>", unsafe_allow_html=True) #Empty line
+            st.markdown("<h3 style='text-align: center;'>Dados da simulação:</h3>", unsafe_allow_html=True)
+            st.text("") #Empty line
             st.write(
-                """
-                -   Valor investido R$: {:.2f}
-                -   Data selecionada: {}
-                -   Taxa SELIC escolhida: {}%
-                -   Taxa IPCA escolhida: {}%
-                -   Taxa prefixada escolhida: {}%
-                """.format(valor_investido, data_resgate, str(selic), str(ipca), str(taxa_resgate)))
+                    """
+                    -   Título selecionado: {}
+                    -   Valor investido: R$ {:.2f}
+                    -   Data de resgate: {}
+                    -   Taxa SELIC escolhida: {}%
+                    -   Taxa IPCA escolhida: {}%
+                    -   Taxa prefixada escolhida: {}%
+                    """.format(titulo.capitalize(), valor_investido, data_resgate, str(selic), str(ipca), str(taxa_resgate)))
+            st.text("") #Empty line
+            st.text("") #Empty line
+            st.markdown("<h3 style='text-align: center;'>Interpretação dos resultados**</h3>", unsafe_allow_html=True)
+            st.text("") #Empty line
+            st.write('<p style="text-align: left;">Os valores calculados devem ser lidos como resposta às perguntas:</p>', unsafe_allow_html=True)
+            st.write('''
+                    -   Qual seria o total resgatado se R$ {} fossem deixados nesse investimento até {}?
+                    -   Qual a variação da inflação e da SELIC durante esse período?"
+                    '''.format(int(valor_investido), data_resgate))
+            st.write('<p style="text-align: left;">Assim, a simulação indica que, na poupança, o dinheiro renderia {}. Já no tesouro direto, o rendimento seria de {} por conta da marcação a mercado e do resgate antecipado. Caso fosse deixado até o vencimento, pode-se considerar um rendimento téorico no tesouro direto de {} em {}.</p>'
+                    .format(df_barplot[df_barplot['Comparação'] == 'Poupança']['valor_str'].tolist()[0],
+                    df_barplot[df_barplot['Comparação'] == 'Tesouro direto (real)']['valor_str'].tolist()[0], 
+                    df_barplot[df_barplot['Comparação'] == 'Tesouro direto (teórico)']['valor_str'].tolist()[0], 
+                    data_resgate), 
+                    unsafe_allow_html=True)
+            st.write('<p style="text-align: left;">Ademais, durante esse período, a inflação avançará {} e a SELIC {}.</p>'
+                    .format(df_barplot[df_barplot['Comparação'] == 'Inflação (IPCA)']['valor_str'].tolist()[0],
+                    df_barplot[df_barplot['Comparação'] == 'SELIC']['valor_str'].tolist()[0]), 
+                    unsafe_allow_html=True)
 
-
-        fig = px.bar(df_barplot, x='Comparação', y = 'valor', text = 'valor_str')
-        tab1.plotly_chart(fig, use_container_width=True)
-        tab2.write(df_barplot)
-        
-        fig = px.line(rendimentos, x='Data', y=['Poupança', 'Selic', 'Inflação (IPCA)', 'Tesouro direto (teórico)', 'Tesouro direto (real)'])
+        fig = px.line(rendimentos, x='Data', y=['Poupança', 'SELIC', 'Inflação (IPCA)', 'Tesouro direto (teórico)', 'Tesouro direto (real)'], labels = {'Data' : 'Data de resgate', 'value' : 'Valor de resgate  /  Variação (R$)', 'variable' : 'Variável'}, hover_data={'Data' : False})
+        fig.update_layout(hovermode="x unified", title = {'text' : 'Variação do retorno com o tempo','xanchor': 'left'})
         container2.plotly_chart(fig, use_container_width=True)
 
+        fig = px.bar(df_barplot, x='Comparação', y = 'valor', text = 'valor_str', labels = {'valor' : 'Rendimento  /  Variação (%)'},hover_data= {'Comparação': False, 'valor' : False, 'valor_str' : False})
+        fig.update_layout(title = {'text' : 'Expectativa percentual do retorno','xanchor': 'left'})
+        tab1.plotly_chart(fig, use_container_width=True)
+        df_show = df_barplot[['Comparação', 'valor_str']].set_index('Comparação')
+        df_show.columns = ['Valor']
+        tab2.dataframe(df_show)
+        
+        st.text("") #Empty line
+        st.write('''<p1 style="font-size: small" style="text-align: left;">
+                *Não é recomendação de investimento. A ferramenta deve ser utilizada apenas para cálculos sem compromisso.</p1>''',unsafe_allow_html=True)
+        st.write('''<p1 style="font-size: small" style="text-align: left;">
+                **Os resultados mostrados são brutos de imposto de renda e aproximados por conta do cálculo de dias úteis. Além disso, não consideram a taxa de custódia da B3 ou taxas das corretoras.</p1>''',unsafe_allow_html=True)
         
     
-        
+# ---- HIDE STREAMLIT STYLE
+hide_st_style = '''
+                <style>
+                #MainMenu {visibility: hidden;}
+                footer {visibility: hidden;}
+                header {visibility: hidden;}
+                </style>    
+                ''' 
+st.markdown(hide_st_style, unsafe_allow_html=True)                
