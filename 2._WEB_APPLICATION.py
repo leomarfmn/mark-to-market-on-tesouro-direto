@@ -76,6 +76,7 @@ if (page == "Home"):
     st.subheader('Títulos disponíveis* para simulação**')
     st.write('Escolha uma opção ao lado (Teoria ou Simulações) para continuar.')
     st.table(df.set_index('TÍTULO'))
+    st.caption('Atualizado em 28 de julho de 2022.')
     st.write('''<p1 style="font-size: small" style="text-align: left;">
                 *Foram listados acima apenas os títulos vendidos direto pelo portal do tesouro direto e com rendimento atrelado ao IPCA ou prefixados.</p1>''',unsafe_allow_html=True)
     st.write('''<p1 style="font-size: small" style="text-align: left;">
